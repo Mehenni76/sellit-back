@@ -1,0 +1,5 @@
+package sogeti.cir.fsn.api.neo4j.service;
+
+public class ResourceNotFoundException extends FsnServiceException {
+
+}

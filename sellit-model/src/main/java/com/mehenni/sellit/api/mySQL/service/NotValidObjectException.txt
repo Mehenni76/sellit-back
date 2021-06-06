@@ -1,0 +1,17 @@
+package sogeti.cir.fsn.api.neo4j.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class NotValidObjectException extends FsnServiceException {
+
+	private List<String> errors;
+	
+	public NotValidObjectException() {
+		this.errors = new ArrayList<String>();
+	}
+	
+	public NotValidObjectException(List<String> errors) {
+		this.errors = errors;
+	}
+}

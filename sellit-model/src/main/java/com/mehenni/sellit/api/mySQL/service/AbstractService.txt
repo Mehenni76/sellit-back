@@ -1,0 +1,102 @@
+package sogeti.cir.fsn.api.neo4j.service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import javax.validation.ConstraintViolation;
+import javax.validation.Valid;
+import javax.validation.Validator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
+
+import com.google.common.reflect.TypeToken;
+
+import sogeti.cir.fsn.api.neo4j.dao.AbstractDao;
+import sogeti.cir.fsn.api.service.AsyncService;
+import sogeti.cir.fsn.model.neo4j.NeoModel;
+
+public class AbstractService<T extends NeoModel> {
+
+	@Autowired
+	protected AsyncService aService;
+	
+	@Autowired
+	protected Validator validator;
+
+	protected final Logger log = LoggerFactory.getLogger(getClass());
+	protected AbstractDao<T> dao;
+
+	private Class<T> clazz;
+
+	public AbstractService(AbstractDao<T> dao) {
+		this.dao = dao;
+		this.clazz = (Class<T>) new TypeToken<T>(getClass()) {
+			private static final long serialVersionUID = 1L;
+		}.getRawType();
+	}
+
+
+    @Transactional
+    public Page<T> findAllByPage(Pageable page) {
+           return dao.findAll(page);
+    }
+
+	@Transactional
+	public Iterable<T> findAll() {
+		return dao.findAll();
+	}
+
+	@Transactional
+	public Iterable<T> search(String search) {
+		return dao.search(clazz.getSimpleName(), search);
+	}
+
+	@Transactional
+	public T findOne(Long id) throws ResourceNotFoundException {
+		T obj = dao.findOne(id);
+		if(obj == null)
+			throw new ResourceNotFoundException();
+		return dao.findOne(id);
+	}
+
+	@Transactional
+	public T save(T objet) throws NotValidObjectException, ResourceNotFoundException {
+		Assert.notNull(objet, "Ne peut pas être null.");
+		if(objet.getId() != null)
+			this.findOne(objet.getId());
+		Set<ConstraintViolation<T>> errors = validator.validate(objet);
+		if(errors.size() > 0) {
+			List<String> l = new ArrayList<String>();
+			for(ConstraintViolation cv : errors)
+				l.add(cv.getMessage());
+			throw new NotValidObjectException(l);
+		}
+		Assert.isTrue(objet.getProtege() == null || !objet.getProtege(), "(" + objet.getLabel() + ") est protégé !");
+		return dao.save(objet);
+	}
+
+	@Transactional
+	public void delete(Long id) throws FsnServiceException {
+		T obj = dao.findOne(id);
+		if(obj == null)
+			throw new ResourceNotFoundException();
+		dao.delete(id);
+	}
+
+	@Transactional
+	public long count() {
+		return dao.count();
+	}
+
+
+	public AbstractDao<T> getDao() {
+		return dao;
+	}
+}
